@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FES. ALPHA MAROUANE // GEO-LOCATION COMMAND CENTER</title>
+
+    <!-- Leaflet CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;600;700&family=Orbitron:wght@500;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --primary: #00f3ff;
+            --secondary: #ff0055;
+            --bg-dark: #030712;
+            --panel-bg: rgba(6, 11, 25, 0.9);
+            --border-color: rgba(0, 243, 255, 0.35);
+            --font-mono: 'Fira Code', monospace;
+            --font-head: 'Orbitron', sans-serif;
+            --glow: 0 0 15px rgba(0, 243, 255, 0.4);
+        }
+
+        .matrix-mode {
+            --primary: #00ff66;
+            --secondary: #a8ff00;
+            --panel-bg: rgba(2, 20, 10, 0.92);
+            --border-color: rgba(0, 255, 102, 0.35);
+            --glow: 0 0 15px rgba(0, 255, 102, 0.4);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--primary);
+            font-family: var(--font-mono);
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            transition: all 0.3s ease;
+        }
+
+        header {
+            height: 55px;
+            background: var(--panel-bg);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+            z-index: 1000;
+            box-shadow: var(--glow);
+            backdrop-filter: blur(10px);
+        }
+
+        .logo {
+            font-family: var(--font-head);
+            font-size: 1.1rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-shadow: 0 0 10px var(--primary);
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            background-color: var(--secondary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--secondary);
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 0.3; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1.3); }
+        }
+
+        .workspace {
+            display: flex;
+            flex: 1;
+            position: relative;
+            height: calc(100vh - 55px);
+        }
+
+        .sidebar {
+            width: 320px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            padding: 15px;
+            z-index: 1000;
+            backdrop-filter: blur(8px);
+        }
+
+        .btn-cyber {
+            background: rgba(0, 243, 255, 0.08);
+            border: 1px solid var(--primary);
+            color: var(--primary);
+            padding: 12px;
+            font-family: var(--font-head);
+            font-weight: bold;
+            font-size: 0.8rem;
+            cursor: pointer;
+            border-radius: 4px;
+            letter-spacing: 1px;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            box-shadow: var(--glow);
+            text-transform: uppercase;
+        }
+
+        .btn-cyber:hover {
+            background: var(--primary);
+            color: #000;
+            box-shadow: 0 0 25px var(--primary);
+        }
+
+        .btn-secondary {
+            border-color: var(--secondary);
+            color: var(--secondary);
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary);
+            color: #fff;
+            box-shadow: 0 0 25px var(--secondary);
+        }
+
+        .panel-box {
+            border: 1px solid var(--border-color);
+            background: rgba(0, 0, 0, 0.45);
+            padding: 12px;
+            border-radius: 4px;
+        }
+
+        .panel-title {
+            font-family: var(--font-head);
+            font-size: 0.75rem;
+            color: #888;
+            margin-bottom: 8px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .data-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            margin-bottom: 6px;
+        }
+
+        .data-val {
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .map-container {
+            flex: 1;
+            position: relative;
+            background: #000;
+        }
+
+        #map {
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .map-overlay-grid {
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            pointer-events: none;
+            z-index: 500;
+            background: 
+                linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+            background-size: 40px 40px;
+        }
+
+        .terminal-bar {
+            position: absolute;
+            bottom: 0;
+            left: 320px;
+            right: 0;
+            height: 100px;
+            background: rgba(3, 7, 18, 0.94);
+            border-top: 1px solid var(--border-color);
+            z-index: 1000;
+            padding: 10px 15px;
+            font-size: 0.75rem;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        .log-output {
+            overflow-y: hidden;
+            height: 60px;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            gap: 2px;
+            color: var(--primary);
+            opacity: 0.85;
+        }
+
+        .log-entry {
+            display: flex;
+            gap: 10px;
+        }
+
+        .log-time { color: #666; }
+
+        .gps-target-marker {
+            width: 30px;
+            height: 30px;
+            border: 2px solid var(--secondary);
+            border-radius: 50%;
+            position: relative;
+            animation: radar-ping 1.5s infinite;
+        }
+
+        .gps-target-marker::after {
+            content: '';
+            position: absolute;
+            top: 50%; left: 50%;
+            transform: translate(-50%, -50%);
+            width: 8px; height: 8px;
+            background: var(--secondary);
+            border-radius: 50%;
+            box-shadow: 0 0 10px var(--secondary);
+        }
+
+        @keyframes radar-ping {
+            0% { box-shadow: 0 0 0 0px rgba(255, 0, 85, 0.8); }
+            100% { box-shadow: 0 0 0 25px rgba(255, 0, 85, 0); }
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo">
+            <div class="status-dot"></div>
+            FES. ALPHA MAROUANE // COMMAND CENTER
+        </div>
+        <div id="clock">00:00:00 UTC</div>
+    </header>
+
+    <div class="workspace">
+        <div class="sidebar">
+            <button class="btn-cyber" onclick="locateUserGPS()">
+                🎯 LOCATE MY CURRENT GPS
+            </button>
+
+            <button class="btn-cyber btn-secondary" onclick="toggleColorMode()">
+                ⚡ TOGGLE MATRIX MODE
+            </button>
+
+            <div class="panel-box">
+                <div class="panel-title">OPERATOR <span>[MAROUANE]</span></div>
+                <div class="data-row"><span>NODE ID:</span><span class="data-val">ALPHA-MAROUANE-01</span></div>
+                <div class="data-row"><span>LAT:</span><span class="data-val" id="lat-val">34.0333°</span></div>
+                <div class="data-row"><span>LNG:</span><span class="data-val" id="lng-val">-5.0000°</span></div>
+                <div class="data-row"><span>ACCURACY:</span><span class="data-val" id="acc-val">-- meters</span></div>
+                <div class="data-row"><span>STATUS:</span><span class="data-val" id="status-val" style="color: var(--primary);">STANDBY</span></div>
+            </div>
+
+            <div class="panel-box">
+                <div class="panel-title">SYSTEM MATRIX STATS</div>
+                <div class="data-row"><span>CPU LOAD:</span><span class="data-val" id="cpu-val">42%</span></div>
+                <div class="data-row"><span>NEURAL SYNC:</span><span class="data-val" id="sync-val">99.8%</span></div>
+                <div class="data-row"><span>SECURITY:</span><span class="data-val" style="color: #00ffaa;">ENCRYPTED</span></div>
+            </div>
+        </div>
+
+        <div class="map-container">
+            <div id="map"></div>
+            <div class="map-overlay-grid"></div>
+        </div>
+
+        <div class="terminal-bar">
+            <div class="log-output" id="log-output">
+                <div class="log-entry"><span class="log-time">[00:00:01]</span> <span>FES. ALPHA MAROUANE system initialized.</span></div>
+                <div class="log-entry"><span class="log-time">[00:00:02]</span> <span>Satellite layer linked to MAROUANE node.</span></div>
+            </div>
+            <div style="color: #666; font-size: 0.7rem; display: flex; justify-content: space-between;">
+                <span>OPERATOR: MAROUANE</span>
+                <span id="cursor-pos">POS: 00.0000, 00.0000</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toUTCString().slice(17, 25) + ' UTC';
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        function playSciFiSound(freq = 880, type = 'sine') {
+            try {
+                const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                const osc = ctx.createOscillator();
+                const gain = ctx.createGain();
+                osc.type = type;
+                osc.frequency.value = freq;
+                gain.gain.setValueAtTime(0.04, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.00001, ctx.currentTime + 0.25);
+                osc.connect(gain);
+                gain.connect(ctx.destination);
+                osc.start();
+                osc.stop(ctx.currentTime + 0.25);
+            } catch(e){}
+        }
+
+        const map = L.map('map', {
+            center: [34.0333, -5.0000],
+            zoom: 13,
+            zoomControl: false
+        });
+
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+            maxZoom: 19,
+            attribution: 'Esri Satellite'
+        }).addTo(map);
+
+        map.on('mousemove', (e) => {
+            document.getElementById('cursor-pos').innerText = 
+                `POS: ${e.latlng.lat.toFixed(4)}°, ${e.latlng.lng.toFixed(4)}°`;
+        });
+
+        setInterval(() => {
+            document.getElementById('cpu-val').innerText = (35 + Math.floor(Math.random() * 30)) + '%';
+        }, 2000);
+
+        function addLog(text) {
+            const container = document.getElementById('log-output');
+            const now = new Date().toUTCString().slice(17, 25);
+            const div = document.createElement('div');
+            div.className = 'log-entry';
+            div.innerHTML = `<span class="log-time">[${now}]</span> <span>${text}</span>`;
+            container.appendChild(div);
+            if (container.children.length > 3) {
+                container.removeChild(container.children[0]);
+            }
+        }
+
+        let userMarker = null;
+        let accuracyCircle = null;
+
+        function setLockLocation(lat, lng, acc = 15, isFallback = false) {
+            document.getElementById('lat-val').innerText = lat.toFixed(5) + "°";
+            document.getElementById('lng-val').innerText = lng.toFixed(5) + "°";
+            document.getElementById('acc-val').innerText = Math.round(acc) + "m";
+            document.getElementById('status-val').innerText = "LOCKED";
+            document.getElementById('status-val').style.color = "#00ffaa";
+
+            if (isFallback) {
+                addLog(`Fallback location locked (Fes Node). Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            } else {
+                addLog(`GPS Lock acquired! Coords: ${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+            }
+
+            if (userMarker) map.removeLayer(userMarker);
+            if (accuracyCircle) map.removeLayer(accuracyCircle);
+
+            map.flyTo([lat, lng], 17, { duration: 2.5 });
+
+            const icon = L.divIcon({
+                className: 'gps-target-marker',
+                iconSize: [30, 30],
+                iconAnchor: [15, 15]
+            });
+
+            userMarker = L.marker([lat, lng], { icon: icon }).addTo(map)
+                .bindPopup(`<b>MAROUANE NODE LOCKED</b><br>LAT: ${lat.toFixed(5)}<br>LNG: ${lng.toFixed(5)}`).openPopup();
+
+            accuracyCircle = L.circle([lat, lng], {
+                radius: acc,
+                color: '#00f3ff',
+                fillColor: '#00f3ff',
+                fillOpacity: 0.15,
+                weight: 1
+            }).addTo(map);
+
+            playSciFiSound(1600, 'sine');
+        }
+
+        function locateUserGPS() {
+            playSciFiSound(1200, 'square');
+            document.getElementById('status-val').innerText = "LOCKING...";
+            document.getElementById('status-val').style.color = "#ffcc00";
+            addLog("MAROUANE node initiating satellite GPS lock sequence...");
+
+            if ("geolocation" in navigator) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        setLockLocation(pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, false);
+                    },
+                    (err) => {
+                        addLog("GPS Access restricted. Initiating target simulation...");
+                        setLockLocation(34.0333, -5.0000, 20, true);
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                setLockLocation(34.0333, -5.0000, 20, true);
+            }
+        }
+
+        function toggleColorMode() {
+            playSciFiSound(800, 'triangle');
+            document.body.classList.toggle('matrix-mode');
+            addLog("Color palette profile updated.");
+        }
+    </script>
+</body>
+</html>
